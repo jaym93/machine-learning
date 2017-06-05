@@ -1,0 +1,50 @@
+[symboling]
+  remove
+[normalized-losses]
+  remove
+[make]
+  remove
+
+[fuel type]
+  1: gas
+  2: diesel
+[aspiration]
+  1: std
+  2: turbo
+[num-of-doors]
+  2: two
+  4: four
+[body-style]
+  1: hatchback
+  2: sedan
+  3: convertible
+  4: hardtop
+  5: wagon
+[drive-wheel]
+  1: fwd
+  2: rwd
+  3: 4wd
+[engine-location]
+  1: front
+  2: rear
+[engine-type]
+  1: ohc
+  2: dohc
+  3: ohcf
+  4: ohcv
+  5: l
+[num-of-cylinders]
+  3: three
+  4: four
+  5: five
+  6: six
+  8: eight
+  12: twelve
+[fuel-system]
+  1: mpfi
+  2: idi
+  3: 1bbl
+  4: 2bbl
+  5: mfi
+  6: spdi
+  7: spfi
