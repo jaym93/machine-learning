@@ -1,4 +1,4 @@
-##Supervised Learning: Algorithm Implementations
+# Supervised Learning: Algorithm Implementations
 
 The source code for this project can be found alongside this readme. 
 Inside is a requirements.txt. Python 3.4 or greater is required to run the code in the files and to use the dependencies. 
@@ -8,7 +8,7 @@ Install the dependencies from `requirements.txt`:
 pip install -r requirements.txt
 ```
 
-###Datasets
+### Datasets
 In `supervised` directory:
 - The datasets are in the `data` folder, under respective directory names
 - They been cleaned as per `cleaning_process.txt`
@@ -16,7 +16,7 @@ In `supervised` directory:
 - The original occupancy dataset was taken from [here](https://archive.ics.uci.edu/ml/datasets/Occupancy+Detection+) and is distributed in `data/occupancy/datatrain.csv` and `data/occupancy/datatest.csv`
 - Cleaned dataset is in `*_cleaned.csv`
 
-###Running the algorithms
+### Running the algorithms
 Every **.py** file within `src` can be run directly with 
 ```
 python3 <name.py>
