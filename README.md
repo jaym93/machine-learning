@@ -47,6 +47,6 @@ Create a folder structure (at top level) as below to provide a place to record g
         - occupancy
         
 Upon completeion, each file should write
-- data.csv: with algorithm parameters and error measures
-- rawdata.txt: containing a timestamp and additional metrics like confusion matrix and scores
-- images of visualization
+- `data.csv`: with algorithm parameters and error measures
+- `rawdata.txt`: containing a timestamp and additional metrics like confusion matrix and scores
+- images of visualization (in case of 2D classification or 1D regression only)
