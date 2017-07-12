@@ -44,7 +44,7 @@ df_train = handle_non_numerical_data(df_train)
 
 arr = np.array(df_train).astype(float)
 df_train = pd.DataFrame(arr)
-# df.to_csv(os.path.join('data', 'income', 'income_train_norm.csv'))
+df_train.to_csv(os.path.join('data', 'income', 'income_train_norm.csv'))
 
 ## TESTING DATA
 df_test = pd.read_csv(os.path.join('data', 'income', 'income_test.csv'))
@@ -55,16 +55,21 @@ df_test = handle_non_numerical_data(df_test)
 
 arr = np.array(df_test).astype(float)
 df_test = pd.DataFrame(arr)
-# df.to_csv(os.path.join('data', 'income', 'income_train_norm.csv'))
+#df_test.to_csv(os.path.join('data', 'income', 'income_train_norm.csv'))
 
 #########################
 
-X_train = df_train.values
+X_train = df_train.values[:, 0:14]
+y_train = df_train.values[:, 14:15]
 X_test = df_test.values
+y_test = np.zeros((15853, 1))
 
+# print(X_train.shape, y_train.shape, X_test.shape, y_test.shape)
 sc = preprocessing.StandardScaler()
 sc.fit(X_train)
 sc.fit(X_test)
 
 X_train_std = sc.transform(X_train)
 X_test_std = sc.transform(X_test)
+
+

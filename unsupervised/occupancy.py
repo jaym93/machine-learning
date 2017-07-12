@@ -5,28 +5,32 @@
 # Description:
 
 import numpy as np
-import argparse
+import os
 from matplotlib import pyplot as plt
+import time
 
 from sklearn.decomposition.pca import PCA as PCA
 from sklearn.decomposition import FastICA as ICA
 from sklearn.random_projection import GaussianRandomProjection as RandomProjection
 from sklearn.cluster import KMeans as KM
 from sklearn.mixture import GaussianMixture as EM
-from sklearn.feature_selection import SelectKBest as best
-from sklearn.feature_selection import chi2
+from pybrain.datasets.classification import ClassificationDataSet
+from pybrain.tools.shortcuts import buildNetwork
+from pybrain.supervised.trainers import BackpropTrainer
 
-from income_data import X_train_std, X_test_std
+from occupancy_data import X_train_std, X_test_std, y_train, y_test
+file = open(os.path.join('occupancy_telemetry.csv'), "w")
 
-def create_dataset(name, test, train):
-    training_set = X_train_std
-    testing_set = X_test_std
-    train_x, train_y = np.hsplit(training_set, [training_set[0].size-1])
-    test_x, test_y = np.hsplit(testing_set, [testing_set[0].size-1])
-    # this splits the dataset on the last instance, so your label must
-    # be the last instance in the dataset
-    return train_x, train_y, test_x, test_y
+def timeit(method):
 
+    def timed(*args, **kw):
+        ts = time.time()
+        result = method(*args, **kw)
+        te = time.time()
+        print('%r (%r, %r) %f sec' % (method.__name__, args, kw, te-ts))
+        return result
+
+    return timed
 
 def plot(axes, values, x_label, y_label, title, name):
     plt.clf()
@@ -39,63 +43,53 @@ def plot(axes, values, x_label, y_label, title, name):
     # plt.show()
     plt.clf()
 
-
+@timeit
 def pca(tx, ty, rx, ry):
     compressor = PCA(n_components = tx[1].size//2)
     compressor.fit(tx, y=ty)
     newtx = compressor.transform(tx)
     newrx = compressor.transform(rx)
-    em(newtx, ty, newrx, ry, add="wPCAtr", times=10)
-    km(newtx, ty, newrx, ry, add="wPCAtr", times=10)
-    # nn(newtx, ty, newrx, ry, add="wPCAtr")
+    em(newtx, ty, newrx, ry, add="Occu_PCA", times=10)
+    km(newtx, ty, newrx, ry, add="Occu_PCA", times=10)
+    nn(newtx, ty, newrx, ry, add="Occu_PCA")
 
-
+@timeit
 def ica(tx, ty, rx, ry):
     compressor = ICA(whiten=False)  # for some people, whiten needs to be off
     compressor.fit(tx, y=ty)
     newtx = compressor.transform(tx)
     newrx = compressor.transform(rx)
-    em(newtx, ty, newrx, ry, add="wICAtr", times=10)
-    km(newtx, ty, newrx, ry, add="wICAtr", times=10)
-    # nn(newtx, ty, newrx, ry, add="wICAtr")
 
+    em(newtx, ty, newrx, ry, add="Occu_ICA", times=10)
+    km(newtx, ty, newrx, ry, add="Occu_ICA", times=10)
+    nn(newtx, ty, newrx, ry, add="Occu_ICA")
 
-def randproj(tx, ty, rx, ry):
+@timeit
+def rca(tx, ty, rx, ry):
     compressor = RandomProjection(tx[1].size)
     compressor.fit(tx, y=ty)
     newtx = compressor.transform(tx)
-    # compressor = RandomProjection(tx[1].size)
     newrx = compressor.transform(rx)
-    em(newtx, ty, newrx, ry, add="wRPtr", times=10)
-    km(newtx, ty, newrx, ry, add="wRPtr", times=10)
-    # nn(newtx, ty, newrx, ry, add="wRPtr")
+    em(newtx, ty, newrx, ry, add="Occu_RCA", times=10)
+    km(newtx, ty, newrx, ry, add="Occu_RCA", times=10)
+    nn(newtx, ty, newrx, ry, add="Occu_RCA")
 
-
-# def kbest(tx, ty, rx, ry):
-#     compressor = best(chi2)
-#     compressor.fit(tx, y=ty)
-#     newtx = compressor.transform(tx)
-#     newrx = compressor.transform(rx)
-#     em(newtx, ty, newrx, ry, add="wKBtr", times=10)
-#     km(newtx, ty, newrx, ry, add="wKBtr", times=10)
-#     # nn(newtx, ty, newrx, ry, add="wKBtr")
-
-
+@timeit
 def em(tx, ty, rx, ry, add="", times=5):
     errs = []
 
     # this is what we will compare to
     checker = EM(n_components=2)
-    checker.fit(ry)
-    truth = checker.predict(ry)
+    checker.fit(ry.reshape(-1,1))
+    truth = checker.predict(ry.reshape(-1,1))
 
     # so we do this a bunch of times
-    for i in range(2,times):
-        clusters = {x:[] for x in range(i)}
+    for i in range(2, times):
+        clusters = {x: [] for x in range(i)}
 
         # create a clusterer
         clf = EM(n_components=i)
-        clf.fit(tx)  #fit it to our data
+        clf.fit(tx)  # fit it to our data
         test = clf.predict(tx)
         result = clf.predict(rx)  # and test it on the testing set
 
@@ -126,24 +120,9 @@ def em(tx, ty, rx, ry, add="", times=5):
     rd = np.reshape(result, (result.size, 1))
     newtx = np.append(tx, td, 1)
     newrx = np.append(rx, rd, 1)
-    # nn(newtx, ty, newrx, ry, add="onEM"+add)
-    x = np.linspace(-20., 30.)
-    y = np.linspace(-20., 40.)
-    X, Y = np.meshgrid(x, y)
-    XX = np.array([X.ravel()[:-1], Y.ravel()]).T
-    Z = -clf.score_samples(XX)
-    Z = Z.reshape(X.shape)
+    nn(newtx, ty, newrx, ry, add="EM_"+add)
 
-    CS = plt.contour(X, Y, Z, norm=LogNorm(vmin=1.0, vmax=1000.0),
-                     levels=np.logspace(0, 3, 10))
-    CB = plt.colorbar(CS, shrink=0.8, extend='both')
-    plt.scatter(X_train[:, 0], X_train[:, 1], .8)
-
-    plt.title('Negative log-likelihood predicted by a GMM')
-    plt.axis('tight')
-    plt.show()
-
-
+@timeit
 def km(tx, ty, rx, ry, add="", times=5):
     #this does the exact same thing as the above
     errs = []
@@ -170,42 +149,40 @@ def km(tx, ty, rx, ry, add="", times=5):
     rd = np.reshape(result, (result.size, 1))
     newtx = np.append(tx, td, 1)
     newrx = np.append(rx, rd, 1)
-    # nn(newtx, ty, newrx, ry, add="onKM"+add)
+    nn(newtx, ty, newrx, ry, add="KM_"+add)
 
-
-# def nn(tx, ty, rx, ry, add="", iterations=250):
-#     """
-#     trains and plots a neural network on the data we have
-#     """
-#     resultst = []
-#     resultsr = []
-#     positions = range(iterations)
-#     network = buildNetwork(tx[1].size, 5, 1, bias=True)
-#     ds = ClassificationDataSet(tx[1].size, 1)
-#     for i in xrange(len(tx)):
-#         ds.addSample(tx[i], [ty[i]])
-#     trainer = BackpropTrainer(network, ds, learningrate=0.01)
-#     train = zip(tx, ty)
-#     test = zip(rx, ry)
-#     for i in positions:
-#         trainer.train()
-#         resultst.append(sum(np.array([(round(network.activate(t_x)) - t_y)**2 for t_x, t_y in train])/float(len(train))))
-#         resultsr.append(sum(np.array([(round(network.activate(t_x)) - t_y)**2 for t_x, t_y in test])/float(len(test))))
-#         # resultsr.append(sum((np.array([round(network.activate(test)) for test in rx]) - ry)**2)/float(len(ry)))
-#         print(i, resultst[-1], resultsr[-1])
-#     plot([0, iterations, 0, 1], (positions, resultst, "ro", positions, resultsr, "bo"), "Network Epoch", "Percent Error", "Neural Network Error", "NN"+add)
-#
-
+@timeit
+def nn(tx, ty, rx, ry, add="", iterations=250):
+    """
+    trains and plots a neural network on the data we have
+    """
+    resultst = []
+    resultsr = []
+    positions = range(iterations)
+    network = buildNetwork(tx[1].size, 5, 1, bias=True)
+    ds = ClassificationDataSet(tx[1].size, 1)
+    for i in range(len(tx)):
+        ds.addSample(tx[i], [ty[i]])
+    trainer = BackpropTrainer(network, ds, learningrate=0.01)
+    train = zip(tx, ty)
+    test = zip(rx, ry)
+    for i in positions:
+        trainer.train()
+        resultst.append(sum(np.array([(round(network.activate(t_x)) - t_y)**2 for t_x, t_y in train])/float(len(train))))
+        resultsr.append(sum(np.array([(round(network.activate(t_x)) - t_y)**2 for t_x, t_y in test])/float(len(test))))
+        # resultsr.append(sum((np.array([round(network.activate(test)) for test in rx]) - ry)**2)/float(len(ry)))
+        print(i, resultst[-1], resultsr[-1])
+    plot([0, iterations, 0, 1], (positions, resultst, "ro", positions, resultsr, "bo"), "Network Epoch", "Percent Error", "Neural Network Error", "NN"+add)
 
 if __name__=="__main__":
     name = "occupancy"
-    train = name+".data"
-    test = name+".test"
-    train_x, train_y, test_x, test_y = create_dataset(name, test, train)
-    # nn(train_x, train_y, test_x, test_y); print('nn done')
+    # train = name+".data"
+    # test = name+".test"
+    train_x, train_y, test_x, test_y = X_train_std, y_train, X_test_std, y_test
+    nn(train_x, train_y, test_x, test_y); print('nn done')
     em(train_x, train_y, test_x, test_y, times=10); print('em done')
-    # km(train_x, train_y, test_x, test_y, times = 10); print('km done')
-    # pca(train_x, train_y, test_x, test_y); print('pca done')
-    # ica(train_x, train_y, test_x, test_y); print('ica done')
-    # randproj(train_x, train_y, test_x, test_y); print('randproj done')
-    # kbest(train_x, train_y, test_x, test_y); print('kbest done')
+    km(train_x, train_y, test_x, test_y, times=10); print('km done')
+    pca(train_x, train_y, test_x, test_y); print('pca done')
+    ica(train_x, train_y, test_x, test_y); print('ica done')
+    rca(train_x, train_y, test_x, test_y); print('randproj done')
+    file.close()
